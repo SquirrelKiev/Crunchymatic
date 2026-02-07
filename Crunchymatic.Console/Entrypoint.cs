@@ -23,7 +23,8 @@ public static class Entrypoint
         {
             var subtitleFile = File.ReadAllText(x.SubtitleFilePath);
 
-            var parser = new AssParser();
+            // why loadDefaults isn't false by default is an enigma, 9volt pls
+            var parser = new AssParser(false);
             using var reader = new StringReader(subtitleFile);
             var document = parser.Parse(reader);
             var commonAnalysis = new DocumentCommonAnalysis(document);
@@ -91,7 +92,7 @@ public static class Entrypoint
                     metadataIssues.Add($"PlayRes is set to {playX}x{playY}");
                 }
 
-                if (metadataRes.ycbcrMatrixIsUnmarkedOr609)
+                if (!metadataRes.ycbcrMatrixIsUnmarkedOr609)
                 {
                     var ycbcrMatrix = document.ScriptInfoManager.Get("YCbCr Matrix");
                     metadataIssues.Add($"YCbCr Matrix is set to {ycbcrMatrix}");
