@@ -12,7 +12,7 @@ public static class SubtitleTimingAnalyzer
     {
         var chronologicalEvents = commonAnalysis.GetChronologicalEvents();
 
-        var detectedGaps = new List<SubtitleTimingAnalyzerResult.Event>();
+        var detectedGaps = new List<LinkedEvents>();
 
         // https://github.com/TypesettingTools/Aegisub/blob/41a37d2/src/dialog_timing_processor.cpp#L406
         for (var i = 1; i < chronologicalEvents.Count; ++i)
@@ -23,7 +23,7 @@ public static class SubtitleTimingAnalyzer
             var distance = currentEvent.Start.TotalMilliseconds - previousEvent.End.TotalMilliseconds;
             if ((distance < 0 && -distance <= Overlap) || distance is > 0 and <= AdjacentGap)
             {
-                detectedGaps.Add(new SubtitleTimingAnalyzerResult.Event(previousEvent, currentEvent));
+                detectedGaps.Add(new LinkedEvents(previousEvent, currentEvent));
             }
         }
 
@@ -31,7 +31,8 @@ public static class SubtitleTimingAnalyzer
     }
 }
 
-public record SubtitleTimingAnalyzerResult(List<SubtitleTimingAnalyzerResult.Event> ChronologicalEventsWithGaps)
+public record SubtitleTimingAnalyzerResult(List<LinkedEvents> ChronologicalEventsWithGaps)
 {
-    public record Event(AssCS.Event Start, AssCS.Event End);
 }
+
+public record LinkedEvents(AssCS.Event Start, AssCS.Event End);

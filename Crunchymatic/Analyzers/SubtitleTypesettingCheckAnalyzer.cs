@@ -39,7 +39,7 @@ public static class SubtitleTypesettingAnalyzer
 
         // TODO: if theres a \pos tag, give Lite classification
         return new SubtitleTypesettingAnalyzerResult(
-            commonAnalysis.IsOverlaps()
+            commonAnalysis.GetOverlaps().Count > 0
                 ? SubtitleTypesettingAnalyzerResult.TypesettingStyle.Lite
                 : SubtitleTypesettingAnalyzerResult.TypesettingStyle.None, signs, typesetEvents);
     }

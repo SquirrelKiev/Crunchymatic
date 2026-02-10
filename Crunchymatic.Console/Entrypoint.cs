@@ -13,6 +13,9 @@ public static class Entrypoint
         [Value(0, Required = true, MetaName = "subtitle-file-path",
             HelpText = "The path to the subtitle file to analyze.")]
         public required string SubtitleFilePath { get; set; }
+
+        [Option('s', "print-signs", Default = false, HelpText = "Whether to print what signs were found.")]
+        public bool PrintSigns { get; set; } = false;
     }
 
     public static void Main(string[] args)
@@ -65,8 +68,22 @@ public static class Entrypoint
                     throw new ArgumentOutOfRangeException();
             }
 
+            var overlaps = commonAnalysis.GetOverlaps();
             AnsiConsole.MarkupLineInterpolated(
-                $" [gray]{typesettingRes.Signs.Count} signs, {typesettingRes.SignsWithTypesetting.Count} of which had typesetting[/]");
+                $" [gray]{typesettingRes.Signs.Count} signs, {typesettingRes.SignsWithTypesetting.Count} of which had typesetting. {(overlaps.Count > 0 ? $"Found {overlaps.Count} overlaps." : string.Empty)}[/]");
+
+            if (x.PrintSigns)
+            {
+                foreach (var sign in typesettingRes.Signs)
+                {
+                    AnsiConsole.Markup("[gray] - [/]");
+                    if (typesettingRes.SignsWithTypesetting.Contains(sign))
+                    {
+                        AnsiConsole.Write("[T] ");
+                    }
+                    AnsiConsole.MarkupLineInterpolated($"[gray]{sign.AsAss()}[/]");
+                }
+            }
 
             AnsiConsole.MarkupLineInterpolated(
                 $"[blue]ⓘ {timingRes.ChronologicalEventsWithGaps.Count}/{document.EventManager.Events.Count} ({(double)timingRes.ChronologicalEventsWithGaps.Count / document.EventManager.Events.Count:P}) events with small timing gaps[/]");
@@ -104,7 +121,8 @@ public static class Entrypoint
 
             if (knownFontRes.EventsWithUnknownFonts.Count == 0 && knownFontRes.StylesWithUnknownFonts.Count == 0)
             {
-                AnsiConsole.MarkupLineInterpolated($"[green]✓ Fonts are all valid[/] [gray]{knownFontRes.AllSeenFontNames.Humanize()}[/]");
+                AnsiConsole.MarkupLineInterpolated(
+                    $"[green]✓ Fonts are all valid[/] [gray]{knownFontRes.AllSeenFontNames.Humanize()}[/]");
             }
 
             AnsiConsole.MarkupLineInterpolated($"[blue]ⓘ Found {commentsRes.EventsWithComments.Count} Comments[/]");

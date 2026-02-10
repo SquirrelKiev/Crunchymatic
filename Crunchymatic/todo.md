@@ -11,3 +11,5 @@
 * Check for malformed ass files, e.g. double \[Script Info\], styles that don't exist,
 * meta analysis on multiple sub files
   * check if any subs are outliers in sign count, both TS'd and generally
+* check sign analysis on non latin languages
+* count overlaps for signs (non-core languages seem to have like, 1 overlap on a heavy TS show. doesn't really count imo)

@@ -1,6 +1,9 @@
-﻿using AssCS;
+﻿using System.Globalization;
+using System.Text;
+using AssCS;
 using AssCS.Overrides;
 using AssCS.Overrides.Blocks;
+using Crunchymatic.Analyzers;
 
 namespace Crunchymatic;
 
@@ -8,7 +11,7 @@ public class DocumentCommonAnalysis(Document document)
 {
     private List<Event>? chronologicalEvents;
     private readonly Dictionary<string, bool> styleIsTypesetting = [];
-    private bool? isOverlaps;
+    private HashSet<LinkedEvents>? overlaps;
     
     private static readonly string[] DialogueFonts = ["trebuchet", "arial", "noto", "adobe arabic", "tahoma"];
 
@@ -35,15 +38,11 @@ public class DocumentCommonAnalysis(Document document)
     /// If the document has any overlapping events (events that start before another event finishes playing).
     /// </summary>
     /// <returns></returns>
-    public bool IsOverlaps()
+    public HashSet<LinkedEvents> GetOverlaps()
     {
-        if (isOverlaps.HasValue)
-        {
-            return isOverlaps.Value;
-        }
+        overlaps ??= GetOverlaps(GetChronologicalEvents());
 
-        isOverlaps = IsOverlaps(GetChronologicalEvents());
-        return isOverlaps.Value;
+        return overlaps;
     }
 
     public SignType EventIsSign(Event subtitleEvent)
@@ -71,22 +70,21 @@ public class DocumentCommonAnalysis(Document document)
         {
             if (block is not OverrideBlock overrideBlock) continue;
 
-            foreach (var tag in overrideBlock.Tags)
+            if (overrideBlock.Tags.Any(IsTagTypesetting))
             {
-                if (IsTagTypesetting(tag))
-                {
-                    return SignType.TypesetSign;
-                }
+                return SignType.TypesetSign;
             }
         }
+
+        var stripped = subtitleEvent.GetStrippedText();
         
-        if (subtitleEvent.Actor.Equals("sign", StringComparison.InvariantCultureIgnoreCase) ||
-            subtitleEvent.Style.Contains("sign", StringComparison.InvariantCultureIgnoreCase) ||
+        if (subtitleEvent.Style.Contains("sign", StringComparison.InvariantCultureIgnoreCase) ||
             subtitleEvent.Style.Contains("TypePlaceholder", StringComparison.InvariantCultureIgnoreCase) || // ger
             subtitleEvent.Style.StartsWith("Cart_", StringComparison.InvariantCultureIgnoreCase) || // spa
+            subtitleEvent.Actor.Equals("sign", StringComparison.InvariantCultureIgnoreCase) ||
             subtitleEvent.Actor.Equals("signs", StringComparison.InvariantCultureIgnoreCase) ||
             subtitleEvent.Actor.Contains("Надпись", StringComparison.InvariantCultureIgnoreCase) || // rus
-            subtitleEvent.Text.All(static x => !char.IsLower(x)))
+            (!string.IsNullOrWhiteSpace(stripped) && stripped.EnumerateRunes().All(static x => !Rune.IsLower(x) && Rune.GetUnicodeCategory(x) != UnicodeCategory.OtherLetter)))
         {
             return SignType.Sign;
         }
@@ -113,23 +111,21 @@ public class DocumentCommonAnalysis(Document document)
             OverrideTag.XBord or OverrideTag.XShad or OverrideTag.YBord or OverrideTag.YShad;
     }
 
-    /// <param name="events">List of events. Expected to be sorted by start time.</param>
-    private static bool IsOverlaps(List<Event> events)
+    /// <param name="chronologicalEvents">List of events. Expected to be sorted by start time.</param>
+    private static HashSet<LinkedEvents> GetOverlaps(List<Event> chronologicalEvents)
     {
-        var maxEndTime = Time.Zero;
-        foreach (var subtitleEvent in events)
+        var overlaps = new HashSet<LinkedEvents>();
+        for (var i = 1; i < chronologicalEvents.Count; ++i)
         {
-            if (subtitleEvent.Start < maxEndTime)
-            {
-                return true;
-            }
+            Event previousEvent = chronologicalEvents[i - 1];
+            Event currentEvent = chronologicalEvents[i];
 
-            if (subtitleEvent.End > maxEndTime)
+            if (previousEvent.End > currentEvent.Start)
             {
-                maxEndTime = subtitleEvent.End;
+                overlaps.Add(new LinkedEvents(previousEvent, currentEvent));
             }
         }
 
-        return false;
+        return overlaps;
     }
 }
