@@ -2,5 +2,6 @@
   <Project Path="Crunchymatic.Console/Crunchymatic.Console.csproj" />
   <Project Path="Crunchymatic.Scratchpad/Crunchymatic.Scratchpad.csproj" />
   <Project Path="Crunchymatic.Tests/Crunchymatic.Tests.csproj" />
+  <Project Path="Crunchymatic.Web/Crunchymatic.Web.csproj" />
   <Project Path="Crunchymatic/Crunchymatic.csproj" />
 </Solution>

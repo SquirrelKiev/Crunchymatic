@@ -13,3 +13,7 @@
   * check if any subs are outliers in sign count, both TS'd and generally
 * check sign analysis on non latin languages
 * count overlaps for signs (non-core languages seem to have like, 1 overlap on a heavy TS show. doesn't really count imo)
+* add Text to the actor check on sign detection
+* check actor fields exist (sign of file not being in-house)
+* [CR] The Villainess Is Adored by the Prince of the Neighbor Kingdom - S01E06 [00p].07.ara.Arabic (Saudi Arabia).ass
+  ^ check font detection, TimesNewRoman doesnt seem legit to me. CLI issue?

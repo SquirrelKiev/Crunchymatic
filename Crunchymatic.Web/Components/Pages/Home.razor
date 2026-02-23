@@ -1,0 +1,33 @@
+﻿@page "/"
+@using Crunchymatic.Web.Models
+@using Microsoft.EntityFrameworkCore
+@inject IDbContextFactory<CrunchymaticContext> DbFactory
+
+<PageTitle>Home</PageTitle>
+
+@if (Episodes == null)
+{
+    <p aria-busy="true">Loading anime…</p>
+    return;
+}
+
+<div class="overflow-auto">
+    <SubtitlesTable Episodes="Episodes"/>
+</div>
+
+@code {
+
+    private List<Models.EpisodeCheck>? Episodes { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await using var context = await DbFactory.CreateDbContextAsync();
+
+        Episodes = await context.EpisodeChecks
+            .OrderBy(x => x.TimeSubtitlesGrabbed)
+            .Include(x => x.LinkedAnime)
+            .Include(x => x.CheckedSubtitles)
+            .ToListAsync();
+    }
+
+}

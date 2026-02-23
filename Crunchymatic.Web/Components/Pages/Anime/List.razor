@@ -1,0 +1,35 @@
+﻿@page "/anime"
+@using Crunchymatic.Web.Models
+@using Microsoft.EntityFrameworkCore
+@inject IDbContextFactory<CrunchymaticContext> DbFactory
+
+<PageTitle>Anime</PageTitle>
+
+@if (AnimeList == null)
+{
+    <p aria-busy="true">Loading anime…</p>
+    return;
+}
+
+<p>@AnimeList.Count entries.</p>
+<NavLink href="/anime/new">[Create new]</NavLink>
+<hr/>
+<ul>
+@foreach (var anime in AnimeList)
+{
+    <li><NavLink href="@($"/anime/{anime.Id}")">@anime.EnglishTitle</NavLink></li>
+}
+</ul>
+
+@code {
+
+    private List<Anime>? AnimeList { get; set; }
+    
+    protected override async Task OnInitializedAsync()
+    {
+        await using var context = await DbFactory.CreateDbContextAsync();
+
+        AnimeList = await context.Anime.ToListAsync();
+    }
+
+}
