@@ -1,0 +1,56 @@
+﻿@page "/anime/new"
+@using Microsoft.EntityFrameworkCore
+@inject ILogger<Create> Logger
+@inject IDbContextFactory<Models.CrunchymaticContext> DbFactory
+@inject NavigationManager Navigation
+
+<PageTitle>New anime</PageTitle>
+
+<h3>New anime</h3>
+
+<EditForm Model="Model" OnValidSubmit="OnValidAnimeCreationFormSubmit" FormName="CreateAnimeEntry">
+    <DataAnnotationsValidator/>
+    <ValidationSummary/>
+    <AnimeForm Model="Model"/>
+    <button type="submit">Create</button>
+</EditForm>
+
+@code {
+
+    // TODO: Validate the season ID is valid
+    // TODO: Autofill from crunchyroll (or AniList?)
+    [SupplyParameterFromForm] private AnimeForm.AnimeDTO Model { get; set; } = null!;
+
+    protected override void OnInitialized()
+    {
+        if (Model == null!)
+        {
+            Model = new AnimeForm.AnimeDTO();
+        }
+    }
+
+    private async Task OnValidAnimeCreationFormSubmit()
+    {
+        Logger.LogInformation("Creating anime entry for {thing}", Model);
+
+        await using var context = await DbFactory.CreateDbContextAsync();
+
+        System.Diagnostics.Debug.Assert(Model.EnglishTitle != null);
+        System.Diagnostics.Debug.Assert(Model.CrunchyrollSeasonId != null);
+        System.Diagnostics.Debug.Assert(Model.CrunchyrollSeriesId != null);
+
+        var anime = new Models.Anime
+        {
+            EnglishTitle = Model.EnglishTitle,
+            CrunchyrollSeasonId = Model.CrunchyrollSeasonId,
+            CrunchyrollSeriesId = Model.CrunchyrollSeriesId,
+            SheetName = Model.SheetName
+        };
+        context.Anime.Add(anime);
+
+        await context.SaveChangesAsync();
+
+        Navigation.NavigateTo($"/anime/{anime.Id}");
+    }
+
+}

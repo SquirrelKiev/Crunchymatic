@@ -1,0 +1,61 @@
+﻿@page "/anime/{AnimeId:int}"
+@using Crunchymatic.Web.Models
+@using Microsoft.EntityFrameworkCore
+@inject IDbContextFactory<CrunchymaticContext> DbFactory
+@inject NavigationManager Navigation
+
+@if (Anime == null)
+{
+    <PageTitle>Some anime</PageTitle>
+}
+else
+{
+    <PageTitle>@Anime.EnglishTitle</PageTitle>
+}
+
+@if (Anime == null)
+{
+    <p aria-busy="true">Loading anime…</p>
+    return;
+}
+
+<h3>
+    @Anime.EnglishTitle
+    <a href="@($"https://www.crunchyroll.com/series/{Anime.CrunchyrollSeriesId}/")" target="_blank">
+        <CrunchyLogo style="max-height: 1rem;"/>
+    </a>
+</h3>
+
+<p>@Anime.EpisodeChecks.Count entries.</p>
+<NavLink href="@($"/anime/{AnimeId}/edit")">[Edit]</NavLink>
+<hr/>
+
+<div class="overflow-auto">
+    <SubtitlesTable Episodes="@Anime.EpisodeChecks" HideAnimeTitle/>
+</div>
+
+@code {
+
+    [Parameter] public int AnimeId { get; set; }
+
+    private Anime? Anime { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await using var context = await DbFactory.CreateDbContextAsync();
+
+        var anime = await context.Anime
+            .Include(x => x.EpisodeChecks)
+            .ThenInclude(x => x.CheckedSubtitles)
+            .FirstOrDefaultAsync(x => x.Id == AnimeId);
+
+        if (anime == null)
+        {
+            Navigation.NotFound();
+            return;
+        }
+
+        Anime = anime;
+    }
+
+}

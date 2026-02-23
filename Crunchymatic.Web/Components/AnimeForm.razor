@@ -1,0 +1,42 @@
+﻿@using System.ComponentModel.DataAnnotations
+
+<fieldset>
+    <label>
+        English Title
+        <InputText @bind-Value="Model.EnglishTitle"/>
+    </label>
+    <label>
+        Name on Sheet
+        <InputText @bind-Value="Model.SheetName"/>
+    </label>
+</fieldset>
+<article>
+    Can get Series ID from the URL, e.g. in <code>https://www.crunchyroll.com/series/GRDQKN9DY/saki</code>,
+    the series ID is <code>GRDQKN9DY</code>.<br/>
+    Season ID is returned from API responses, specifically the seasons endpoint. For example, the Season ID for Saki S1 is <code>G6Q4WQJQR</code>.
+</article>
+<fieldset class="grid">
+    <label>
+        Crunchyroll Series ID
+        <InputText @bind-Value="Model.CrunchyrollSeriesId"/>
+    </label>
+    <label>
+        Crunchyroll Season ID
+        <InputText @bind-Value="Model.CrunchyrollSeasonId"/>
+    </label>
+</fieldset>
+
+@code
+{
+    [Parameter] public required AnimeDTO Model { get; set; }
+    
+    public record AnimeDTO
+    {
+        [MinLength(1)] public string? EnglishTitle { get; set; }
+
+        public string? SheetName { get; set; }
+
+        [MinLength(1)] public string? CrunchyrollSeasonId { get; set; }
+        [MinLength(1)] public string? CrunchyrollSeriesId { get; set; }
+    }
+}

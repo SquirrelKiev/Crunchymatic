@@ -1,0 +1,98 @@
+﻿@using System.Globalization
+@using Crunchymatic.Analyzers
+@using Crunchymatic.Web.Models
+
+<table>
+    <colgroup>
+        @if (!HideAnimeTitle)
+        {
+            <col span="1" style="min-width: 275px;"/>
+        }
+        <col span="1" style="min-width: 24px;"/>
+        <col span="1" style="min-width: 150px;"/>
+        <col span="1" style="min-width: 150px;"/>
+        @for (int i = 0; i < SupportedLanguages.LanguageCodeToEnglishName.Count; i++)
+        {
+            <col span="1" style="min-width: 150px;"/>
+        }
+    </colgroup>
+
+    <thead>
+    <tr>
+        @if (!HideAnimeTitle)
+        {
+            <th scope="col">Title</th>
+        }
+        <th scope="col">Ep</th>
+        <th scope="col">Release date</th>
+        <th scope="col">Date fetched</th>
+        @foreach (var kvp in SupportedLanguages.LanguageCodeToEnglishName)
+        {
+            <th scope="col">@kvp.Value<br/>(@kvp.Key)</th>
+        }
+    </tr>
+    </thead>
+    <tbody>
+    @foreach (var episode in Episodes)
+    {
+        <tr>
+            @if (!HideAnimeTitle)
+            {
+                if (episode.LinkedAnime != null)
+                {
+                    <td>
+                        <NavLink href="@($"/anime/{episode.AnimeId}")" Match="NavLinkMatch.All">@episode.LinkedAnime.SheetName</NavLink>
+                    </td>
+                }
+                else
+                {
+                    <td></td>
+                }
+            }
+            <th scope="row">@episode.EpisodeNumber
+            </th>
+            <td data-tooltip="@episode.EpisodeReleased.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture)">@episode.EpisodeReleased.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)</td>
+            <td data-tooltip="@episode.TimeSubtitlesGrabbed.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture)">@episode.TimeSubtitlesGrabbed.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)</td>
+            @foreach (var kvp in SupportedLanguages.LanguageCodeToEnglishName)
+            {
+                var subtitle = episode.CheckedSubtitles.FirstOrDefault(x => x.LanguageCode == kvp.Key);
+                if (subtitle == null)
+                {
+                    <td class="unknown-cell">- / -</td>
+                }
+                else
+                {
+                    <td class="@GetCellStyle(subtitle.TypesettingStyle)">@subtitle.SubtitlePipeline / @subtitle.TypesettingStyle</td>
+                }
+            }
+        </tr>
+    }
+    </tbody>
+</table>
+
+@code
+{
+    [Parameter] public required IEnumerable<EpisodeCheck> Episodes { get; set; }
+
+    [Parameter] public bool HideAnimeTitle { get; set; }
+
+    private static string GetCellStyle(SubtitleTypesettingAnalyzerResult.TypesettingStyle style)
+    {
+        switch (style)
+        {
+            case SubtitleTypesettingAnalyzerResult.TypesettingStyle.None:
+                return "none-ts-cell";
+            case SubtitleTypesettingAnalyzerResult.TypesettingStyle.Lite:
+            case SubtitleTypesettingAnalyzerResult.TypesettingStyle.LiteMinus:
+            case SubtitleTypesettingAnalyzerResult.TypesettingStyle.LitePlus:
+                return "lite-ts-cell";
+            case SubtitleTypesettingAnalyzerResult.TypesettingStyle.Full:
+            case SubtitleTypesettingAnalyzerResult.TypesettingStyle.FullMinus:
+            case SubtitleTypesettingAnalyzerResult.TypesettingStyle.FullPlus:
+                return "full-ts-cell";
+            case SubtitleTypesettingAnalyzerResult.TypesettingStyle.Unknown:
+            default:
+                return "unknown-cell";
+        }
+    }
+}

@@ -426,3 +426,5 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+
+/Crunchymatic.Web/Properties/launchSettings.json

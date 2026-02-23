@@ -1,0 +1,19 @@
+﻿.unknown-cell {
+    background-color: #d9d9d9;
+    color: black;
+}
+
+.full-ts-cell {
+    background-color: #b7e1cd;
+    color: black;
+}
+
+.lite-ts-cell {
+    background-color: #ffe599;
+    color: black;
+}
+
+.none-ts-cell {
+    background-color: #ea9999;
+    color: black;
+}
