@@ -3,7 +3,8 @@
     role="img"
     xmlns="http://www.w3.org/2000/svg"
     xmlns:svg="http://www.w3.org/2000/svg"
-    style="@style">
+    @attributes="AdditionalAttributes"
+    >
     <defs
         id="defs1" />
     <path
@@ -13,5 +14,6 @@
 
 @code
 {
-    [Parameter] public string? style { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)]
+    public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
 }
