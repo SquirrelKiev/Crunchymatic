@@ -89,6 +89,7 @@ public static class KnownFontAnalyzer
         List<Style> stylesWithUnknownFonts = [];
         List<KnownFontAnalyzerResult.EventWithFontInfo> eventsWithUnknownFonts = [];
         HashSet<string> seenFonts = new HashSet<string>();
+        HashSet<string> unknownFonts = new HashSet<string>();
 
         foreach (var style in document.StyleManager.Styles)
         {
@@ -98,6 +99,7 @@ public static class KnownFontAnalyzer
                 continue;
 
             stylesWithUnknownFonts.Add(style);
+            unknownFonts.Add(style.FontFamily);
         }
 
         foreach (var subtitleEvent in document.EventManager.Events)
@@ -118,18 +120,20 @@ public static class KnownFontAnalyzer
 
                     var info = new KnownFontAnalyzerResult.EventWithFontInfo(subtitleEvent, fontTag.Value);
                     eventsWithUnknownFonts.Add(info);
+                    unknownFonts.Add(fontTag.Value);
                 }
             }
         }
 
-        return new KnownFontAnalyzerResult(stylesWithUnknownFonts, eventsWithUnknownFonts, seenFonts);
+        return new KnownFontAnalyzerResult(stylesWithUnknownFonts, eventsWithUnknownFonts, seenFonts, unknownFonts);
     }
 }
 
 public record KnownFontAnalyzerResult(
     List<Style> StylesWithUnknownFonts,
     List<KnownFontAnalyzerResult.EventWithFontInfo> EventsWithUnknownFonts,
-    HashSet<string> AllSeenFontNames)
+    HashSet<string> AllSeenFontNames,
+    HashSet<string> AllUnknownFontNames)
 {
     public record EventWithFontInfo(Event Event, string Font);
 }
