@@ -13,7 +13,8 @@ public class DocumentCommonAnalysis(Document document)
     private readonly Dictionary<string, bool> styleIsTypesetting = [];
     private HashSet<LinkedEvents>? overlaps;
     
-    private static readonly string[] DialogueFonts = ["trebuchet", "arial", "noto", "adobe arabic", "tahoma"];
+    // TODO: replace this with a heuristic solution - check all events for the most common style, and assume thats the dialog font? if the style doesnt exist, use the default - whatever that is decided to be
+    private static readonly string[] DialogueFonts = ["trebuchet", "arial", "noto", "adobe arabic", "tahoma", "verdana"];
 
     /// <summary>
     /// Returns the document's events, sorted by their start time.

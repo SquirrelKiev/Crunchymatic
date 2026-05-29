@@ -122,7 +122,12 @@ public static class Entrypoint
             if (knownFontRes.EventsWithUnknownFonts.Count == 0 && knownFontRes.StylesWithUnknownFonts.Count == 0)
             {
                 AnsiConsole.MarkupLineInterpolated(
-                    $"[green]✓ Fonts are all valid[/] [gray]{knownFontRes.AllSeenFontNames.Humanize()}[/]");
+                    $"[green]✓ Fonts are all valid [/][gray]{knownFontRes.AllSeenFontNames.Humanize()}[/]");
+            }
+            else
+            {
+                AnsiConsole.MarkupLineInterpolated(
+                    $"[yellow]⚠ Non CR approved fonts used: [/][gray]{knownFontRes.AllUnknownFontNames.Humanize()}[/][yellow]. Full font list: [/][gray]{knownFontRes.AllSeenFontNames.Humanize()}[/]");
             }
 
             AnsiConsole.MarkupLineInterpolated($"[blue]ⓘ Found {commentsRes.EventsWithComments.Count} Comments[/]");
