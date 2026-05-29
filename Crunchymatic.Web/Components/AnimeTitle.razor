@@ -1,0 +1,9 @@
+﻿@using Crunchymatic.Web.Models
+@Anime.EnglishTitle
+<a href="@($"https://www.crunchyroll.com/series/{Anime.CrunchyrollSeriesId}/")" target="_blank">
+    <CrunchyLogo style="max-height: 1rem;"/>
+</a>
+
+@code {
+    [Parameter] public required Anime Anime { get; set; }
+}

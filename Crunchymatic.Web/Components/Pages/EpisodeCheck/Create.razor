@@ -1,0 +1,83 @@
+﻿@page "/anime/{AnimeId:int}/add-check"
+@using System.ComponentModel.DataAnnotations
+@using Crunchymatic.Web.Models
+@using Microsoft.EntityFrameworkCore
+@using NodaTime
+@inject IDbContextFactory<CrunchymaticContext> DbFactory
+@inject NavigationManager Navigation
+
+@if (Anime == null)
+{
+    <PageTitle>Some anime</PageTitle>
+}
+else
+{
+    <PageTitle>New check for @Anime.EnglishTitle</PageTitle>
+}
+
+@if (Anime == null)
+{
+    <p aria-busy="true">Loading anime…</p>
+    return;
+}
+
+<AnimeHeader Anime="Anime"/>
+<h5>Creating a new episode check entry for <b>@Anime.EnglishTitle</b>.</h5>
+
+<EditForm Model="Model" OnValidSubmit="OnValidEpisodeCheckCreationFormSubmit" FormName="CreateEpisodeCheck">
+    <DataAnnotationsValidator/>
+    <ValidationSummary/>
+    <EpisodeCheckForm Model="Model"/>
+    <button type="submit">Create</button>
+</EditForm>
+
+@code
+{
+    [Parameter] public int AnimeId { get; set; }
+
+    private Anime? Anime { get; set; }
+
+    [SupplyParameterFromForm] private EpisodeCheckForm.EpisodeCheckDTO Model { get; set; } = null!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Model == null!)
+        {
+            Model = new EpisodeCheckForm.EpisodeCheckDTO();
+        }
+
+        await using var context = await DbFactory.CreateDbContextAsync();
+
+        var anime = await context.Anime.FirstOrDefaultAsync(x => x.Id == AnimeId);
+
+        if (anime == null)
+        {
+            Navigation.NotFound();
+            return;
+        }
+
+        Anime = anime;
+    }
+
+    private async Task OnValidEpisodeCheckCreationFormSubmit()
+    {
+        await using var context = await DbFactory.CreateDbContextAsync();
+
+        var episodeCheck = new EpisodeCheck()
+        {
+            AnimeId = AnimeId,
+            CrunchyrollEpisodeId = Model.CrunchyrollEpisodeId,
+            EpisodeReleased = Instant.FromDateTimeOffset(Model.EpisodeReleased),
+            Episode = Model.Episode,
+            AudioLanguage = Model.AudioLanguage,
+            TimeSubtitlesGrabbed = Instant.FromDateTimeOffset(Model.TimeSubtitlesGrabbed),
+            SubtitleArchivePath = Model.SubtitleArchivePath
+        };
+
+        context.EpisodeChecks.Add(episodeCheck);
+
+        await context.SaveChangesAsync();
+        
+        Navigation.NavigateTo($"/anime/{AnimeId}");
+    }
+}

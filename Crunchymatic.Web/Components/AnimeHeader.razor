@@ -1,0 +1,11 @@
+﻿@using Crunchymatic.Web.Models
+
+<h3 @attributes="AdditionalAttributes">
+    <AnimeTitle Anime="Anime"/>
+</h3>
+
+@code {
+    [Parameter] public required Anime Anime { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)]
+    public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
+}

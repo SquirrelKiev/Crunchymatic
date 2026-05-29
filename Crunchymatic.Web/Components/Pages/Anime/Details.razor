@@ -19,12 +19,7 @@ else
     return;
 }
 
-<h3>
-    @Anime.EnglishTitle
-    <a href="@($"https://www.crunchyroll.com/series/{Anime.CrunchyrollSeriesId}/")" target="_blank">
-        <CrunchyLogo style="max-height: 1rem;"/>
-    </a>
-</h3>
+<AnimeHeader Anime="Anime"/>
 
 <p>@Anime.EpisodeChecks.Count entries.</p>
 <NavLink href="@($"/anime/{AnimeId}/edit")">[Edit]</NavLink>
@@ -45,7 +40,7 @@ else
         await using var context = await DbFactory.CreateDbContextAsync();
 
         var anime = await context.Anime
-            .Include(x => x.EpisodeChecks)
+            .Include(x => x.EpisodeChecks.OrderBy(y => y.TimeSubtitlesGrabbed))
             .ThenInclude(x => x.CheckedSubtitles)
             .FirstOrDefaultAsync(x => x.Id == AnimeId);
 

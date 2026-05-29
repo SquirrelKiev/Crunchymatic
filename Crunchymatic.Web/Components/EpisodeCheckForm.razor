@@ -1,0 +1,52 @@
+﻿@using System.ComponentModel.DataAnnotations
+<fieldset>
+    <label>
+        Crunchyroll Episode ID
+        <InputText @bind-Value="Model.CrunchyrollEpisodeId"/>
+    </label>
+</fieldset>
+<fieldset>
+    <label>
+        Episode Number
+        <InputText @bind-Value="Model.Episode"/>
+    </label>
+    <label>
+        Episode Released
+        <InputDate Type="InputDateType.DateTimeLocal" @bind-Value="Model.EpisodeReleased"/>
+    </label>
+    <label>
+        Audio Language
+        <InputText @bind-Value="Model.AudioLanguage"/>
+    </label>
+</fieldset>
+<fieldset>
+    <label>
+        Time Subtitles Grabbed
+        <InputDate Type="InputDateType.DateTimeLocal" @bind-Value="Model.TimeSubtitlesGrabbed"/>
+    </label>
+    <label>
+        Subtitles Archive Path
+        <InputText @bind-Value="Model.SubtitleArchivePath"/>
+    </label>
+</fieldset>
+
+@code {
+    
+    [Parameter]
+    public required EpisodeCheckDTO Model { get; set; }
+    
+    public record EpisodeCheckDTO
+    {
+        [Required] public DateTimeOffset EpisodeReleased { get; set; } = DateTimeOffset.UtcNow;
+
+        [MinLength(1)] public string Episode { get; set; } = string.Empty;
+
+        [MinLength(3), MaxLength(8)] public string AudioLanguage { get; set; } = "jpn";
+        [MinLength(1), MaxLength(32)] public string CrunchyrollEpisodeId { get; set; } = string.Empty;
+
+        public DateTimeOffset TimeSubtitlesGrabbed { get; set; } = DateTimeOffset.UtcNow;
+
+        public string? SubtitleArchivePath { get; set; }
+    }
+
+}

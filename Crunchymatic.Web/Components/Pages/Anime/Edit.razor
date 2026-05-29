@@ -1,11 +1,12 @@
 ﻿@page "/anime/{AnimeId:int}/edit"
 @using System.Globalization
 @using Crunchymatic.Web.Models
+@using Microsoft.AspNetCore.Antiforgery
 @using Microsoft.EntityFrameworkCore
-@using NuGet.Packaging
 @inject IDbContextFactory<CrunchymaticContext> DbFactory
-@inject ILogger<Create> Logger
+@inject ILogger<Edit> Logger
 @inject NavigationManager Navigation
+@attribute [RequireAntiforgeryToken]
 
 @if (Anime == null)
 {
@@ -22,14 +23,10 @@ else
     return;
 }
 
-<h3>@Anime.EnglishTitle
-    <a href="@($"https://www.crunchyroll.com/series/{Anime.CrunchyrollSeriesId}/")" target="_blank">
-        <CrunchyLogo style="max-height: 1rem;"/>
-    </a>
-</h3>
+<AnimeHeader Anime="Anime"/>
 
 <p>@Anime.EpisodeChecks.Count entries. </p>
-<NavLink href="@($"/anime/{AnimeId}/add-check")" role="button" class="secondary">Add Check</NavLink>
+<NavLink href="@($"/anime/{AnimeId}/add-check")">[Add Check]</NavLink>
 <hr/>
 
 <div class="overflow-auto">
@@ -53,11 +50,11 @@ else
         @foreach (var episode in Anime.EpisodeChecks)
         {
             <tr>
-                <th scope="row">@episode.EpisodeNumber
+                <th scope="row">@episode.Episode
                 </th>
                 <td data-tooltip="@episode.EpisodeReleased.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture)">@episode.EpisodeReleased.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)</td>
                 <td data-tooltip="@episode.TimeSubtitlesGrabbed.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture)">@episode.TimeSubtitlesGrabbed.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)</td>
-                <td><a href="@($"/check/{episode.Id}")">Edit</a></td>
+                <td><a href="@($"/check/{episode.Id}/edit")">Edit</a></td>
             </tr>
         }
         </tbody>
@@ -95,7 +92,7 @@ else
         await using var context = await DbFactory.CreateDbContextAsync();
 
         var anime = await context.Anime
-            .Include(x => x.EpisodeChecks)
+            .Include(x => x.EpisodeChecks.OrderBy(y => y.TimeSubtitlesGrabbed))
             .ThenInclude(x => x.CheckedSubtitles)
             .FirstOrDefaultAsync(x => x.Id == AnimeId);
 
@@ -106,6 +103,7 @@ else
         }
 
         Anime = anime;
+        
         Model ??= new AnimeForm.AnimeDTO()
         {
             EnglishTitle = Anime.EnglishTitle,

@@ -1,0 +1,128 @@
+﻿@page "/check/{CheckId:int}/edit"
+@using System.Globalization
+@using Crunchymatic.Web.Models
+@using Microsoft.EntityFrameworkCore
+@using NodaTime
+@inject IDbContextFactory<CrunchymaticContext> DbFactory
+@inject ILogger<Edit> Logger
+@inject NavigationManager Navigation
+
+@if (Check == null)
+{
+    <PageTitle>Some check</PageTitle>
+}
+else
+{
+    <PageTitle>Check for Episode @Check.Episode of @Check.LinkedAnime!.EnglishTitle</PageTitle>
+}
+
+@if (Check == null)
+{
+    <p aria-busy="true">Loading check…</p>
+    return;
+}
+
+<h3>@EpisodeCheckName</h3>
+
+<EditForm Model="Model" OnValidSubmit="OnValidEpisodeCheckEditFormSubmit" FormName="EditEpisodeCheck">
+    <DataAnnotationsValidator/>
+    <ValidationSummary/>
+    <EpisodeCheckForm Model="Model"/>
+    <button type="submit">Edit</button>
+</EditForm>
+
+<details>
+    <summary>Delete @Check.LinkedAnime!.EnglishTitle Episode @Check.Episode</summary>
+    <p>Press the button below to delete this episode check. This cannot be undone!</p>
+    <form method="post" @formname="DeleteEpisodeCheckEntry" @onsubmit="OnValidDeleteEpisodeCheckSubmit">
+        <AntiforgeryToken/>
+        <button type="submit" style="width: auto;">Delete!</button>
+    </form>
+</details>
+
+@code {
+
+    [Parameter] public int CheckId { get; set; }
+
+    private EpisodeCheck? Check { get; set; }
+    private EpisodeCheckForm.EpisodeCheckDTO? Model { get; set; }
+
+    private string? EpisodeCheckName => Check?.LinkedAnime == null ? null : 
+        $"{Check.LinkedAnime.EnglishTitle} Episode {Check.Episode} ({Check.TimeSubtitlesGrabbed.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)})";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await using var context = await DbFactory.CreateDbContextAsync();
+
+        var check = await context.EpisodeChecks
+            .Include(x => x.LinkedAnime)
+            .FirstOrDefaultAsync(x => x.Id == CheckId);
+
+        if (check == null)
+        {
+            Navigation.NotFound();
+            return;
+        }
+
+        Check = check;
+        Model ??= new EpisodeCheckForm.EpisodeCheckDTO()
+        {
+            CrunchyrollEpisodeId = Check.CrunchyrollEpisodeId,
+            EpisodeReleased = Check.EpisodeReleased.ToDateTimeOffset(),
+            Episode = Check.Episode,
+            AudioLanguage = Check.AudioLanguage,
+            TimeSubtitlesGrabbed = Check.TimeSubtitlesGrabbed.ToDateTimeOffset(),
+            SubtitleArchivePath = Check.SubtitleArchivePath
+        };
+    }
+
+    private async Task OnValidEpisodeCheckEditFormSubmit()
+    {
+        Logger.LogInformation("Editing check entry for {thing}", CheckId);
+
+        await using var context = await DbFactory.CreateDbContextAsync();
+
+        System.Diagnostics.Debug.Assert(Model != null);
+
+        var check = await context.EpisodeChecks.FirstOrDefaultAsync(x => x.Id == CheckId);
+
+        if (check == null)
+        {
+            Navigation.Refresh();
+            return;
+        }
+
+        check.CrunchyrollEpisodeId = Model.CrunchyrollEpisodeId;
+        check.EpisodeReleased = Instant.FromDateTimeOffset(Model.EpisodeReleased);
+        check.Episode = Model.Episode;
+        check.AudioLanguage = Model.AudioLanguage;
+        check.TimeSubtitlesGrabbed = Instant.FromDateTimeOffset(Model.TimeSubtitlesGrabbed);
+        check.SubtitleArchivePath = Model.SubtitleArchivePath;
+
+        Check = check;
+
+        await context.SaveChangesAsync();
+    }
+
+    private async Task OnValidDeleteEpisodeCheckSubmit()
+    {
+        Logger.LogInformation("Deleting check entry for {checkId}", CheckId);
+
+        await using var context = await DbFactory.CreateDbContextAsync();
+
+        var check = await context.EpisodeChecks.FirstOrDefaultAsync(x => x.Id == CheckId);
+
+        if (check == null)
+        {
+            Navigation.NavigateTo("/anime");
+            return;
+        }
+
+        context.EpisodeChecks.Remove(check);
+
+        await context.SaveChangesAsync();
+        
+        Navigation.NavigateTo($"/anime/{check.AnimeId}");
+    }
+
+}
