@@ -57,6 +57,6 @@ public class SubtitleTypesettingAnalyzerTests
         var trait = SubtitleTypesettingAnalyzer.Analyze(document, commonAnalysis);
         
         // assert
-        trait.Style.Should().Be(SubtitleTypesettingAnalyzerResult.TypesettingStyle.None);
+        trait.Style.Should().Be(SubtitleTypesettingAnalyzerResult.TypesettingStyle.NoOverlaps);
     }
 }
