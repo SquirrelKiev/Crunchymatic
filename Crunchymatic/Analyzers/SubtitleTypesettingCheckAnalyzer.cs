@@ -12,6 +12,7 @@ public static class SubtitleTypesettingAnalyzer
         var events = document.EventManager.Events;
 
         HashSet<Event> typesetEvents = [];
+        HashSet<Event> positionedEvents = [];
         HashSet<Event> signs = [];
 
         foreach (var subtitleEvent in events)
@@ -23,6 +24,10 @@ public static class SubtitleTypesettingAnalyzer
                     break;
                 case DocumentCommonAnalysis.SignType.Sign:
                     signs.Add(subtitleEvent);
+                    break;
+                case DocumentCommonAnalysis.SignType.PositionedSign:
+                    signs.Add(subtitleEvent);
+                    positionedEvents.Add(subtitleEvent);
                     break;
                 case DocumentCommonAnalysis.SignType.TypesetSign:
                     signs.Add(subtitleEvent);
@@ -41,7 +46,7 @@ public static class SubtitleTypesettingAnalyzer
         return new SubtitleTypesettingAnalyzerResult(
             commonAnalysis.GetOverlaps().Count > 0
                 ? SubtitleTypesettingAnalyzerResult.TypesettingStyle.Lite
-                : SubtitleTypesettingAnalyzerResult.TypesettingStyle.None, signs, typesetEvents);
+                : SubtitleTypesettingAnalyzerResult.TypesettingStyle.NoOverlaps, signs, typesetEvents);
     }
 }
 
@@ -55,7 +60,7 @@ public record SubtitleTypesettingAnalyzerResult(
         /// <summary>
         /// No event overlaps, no style overrides or \pos.
         /// </summary>
-        None,
+        NoOverlaps,
 
         /// <summary>
         /// Is overlaps, typesetting is limited to \an.

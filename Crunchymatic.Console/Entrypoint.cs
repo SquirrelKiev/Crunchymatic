@@ -16,121 +16,127 @@ public static class Entrypoint
 
         [Option('s', "print-signs", Default = false, HelpText = "Whether to print what signs were found.")]
         public bool PrintSigns { get; set; } = false;
+
+        [Option('c', "print-comments", Default = false, HelpText = "Whether to print what comments were found.")]
+        public bool PrintComments { get; set; } = false;
     }
 
     public static void Main(string[] args)
     {
         System.Console.OutputEncoding = System.Text.Encoding.UTF8;
 
-        Parser.Default.ParseArguments<Options>(args).WithParsed(x =>
+        var options = Parser.Default.ParseArguments<Options>(args).Value;
+        
+        if(options == null)
+            return;
+
+        var subtitleFile = File.ReadAllText(options.SubtitleFilePath);
+
+        // why loadDefaults isn't false by default is an enigma, 9volt pls
+        var parser = new AssParser(false);
+        using var reader = new StringReader(subtitleFile);
+        var document = parser.Parse(reader);
+        var commonAnalysis = new DocumentCommonAnalysis(document);
+
+        var commentsRes = CommentsAnalyzer.Analyze(document);
+        var knownFontRes = KnownFontAnalyzer.Analyze(document);
+        var metadataRes = MetadataAnalyzer.Analyze(document);
+        var pipelineRes = PipelineAnalyzer.Analyze(document, commonAnalysis, subtitleFile);
+        var timingRes = SubtitleTimingAnalyzer.Analyze(commonAnalysis);
+        var typesettingRes = SubtitleTypesettingAnalyzer.Analyze(document, commonAnalysis);
+
+        AnsiConsole.MarkupLine($"[blue]ⓘ Pipeline: {pipelineRes.Pipeline}[/]");
+        if (pipelineRes.GeneratedByComment != null)
         {
-            var subtitleFile = File.ReadAllText(x.SubtitleFilePath);
+            AnsiConsole.MarkupInterpolated($"[gray]{pipelineRes.GeneratedByComment}[/]");
+        }
 
-            // why loadDefaults isn't false by default is an enigma, 9volt pls
-            var parser = new AssParser(false);
-            using var reader = new StringReader(subtitleFile);
-            var document = parser.Parse(reader);
-            var commonAnalysis = new DocumentCommonAnalysis(document);
+        switch (typesettingRes.Style)
+        {
+            case SubtitleTypesettingAnalyzerResult.TypesettingStyle.NoOverlaps:
+                AnsiConsole.MarkupInterpolated($"[red]⚠ Sign Style: {typesettingRes.Style}[/]");
+                break;
+            case SubtitleTypesettingAnalyzerResult.TypesettingStyle.Lite:
+                AnsiConsole.MarkupInterpolated($"[yellow]⚠ Sign Style: {typesettingRes.Style}[/]");
+                break;
+            case SubtitleTypesettingAnalyzerResult.TypesettingStyle.Full:
+                AnsiConsole.MarkupInterpolated($"[green]✓ Sign Style: {typesettingRes.Style}[/]");
+                break;
+            default:
+                AnsiConsole.MarkupInterpolated($"[blue]ⓘ Sign Style: {typesettingRes.Style}[/]");
+                break;
+        }
 
-            var commentsRes = CommentsAnalyzer.Analyze(document);
-            var knownFontRes = KnownFontAnalyzer.Analyze(document);
-            var metadataRes = MetadataAnalyzer.Analyze(document);
-            var pipelineRes = PipelineAnalyzer.Analyze(document, commonAnalysis, subtitleFile);
-            var timingRes = SubtitleTimingAnalyzer.Analyze(commonAnalysis);
-            var typesettingRes = SubtitleTypesettingAnalyzer.Analyze(document, commonAnalysis);
+        var overlaps = commonAnalysis.GetOverlaps();
+        AnsiConsole.MarkupLineInterpolated(
+            $" [gray]{typesettingRes.Signs.Count} signs, {typesettingRes.SignsWithTypesetting.Count} of which had typesetting. {(overlaps.Count > 0 ? $"Found {overlaps.Count} overlaps." : string.Empty)}[/]");
 
-            switch (pipelineRes.Pipeline)
+        if (options.PrintSigns)
+        {
+            foreach (var sign in typesettingRes.Signs)
             {
-                case SubtitlePipeline.Old:
-                    AnsiConsole.MarkupLine("[blue]ⓘ Pipeline: Old[/]");
-                    break;
-                case SubtitlePipeline.ClosedCaptionConverter:
-                    AnsiConsole.MarkupLine("[red]ⓘ Pipeline: CCC[/]");
-                    break;
-                case SubtitlePipeline.Direct:
-                    AnsiConsole.MarkupLine("[blue]ⓘ Pipeline: Direct[/]");
-                    AnsiConsole.MarkupLineInterpolated($"[gray]{pipelineRes.GeneratedByComment}[/]");
-                    break;
+                AnsiConsole.Markup("[gray] - [/]");
+                if (typesettingRes.SignsWithTypesetting.Contains(sign))
+                {
+                    AnsiConsole.Write("[T] ");
+                }
+
+                AnsiConsole.MarkupLineInterpolated($"[gray]{sign.AsAss()}[/]");
+            }
+        }
+
+        AnsiConsole.MarkupLineInterpolated(
+            $"[blue]ⓘ {timingRes.ChronologicalEventsWithGaps.Count}/{document.EventManager.Events.Count} ({(double)timingRes.ChronologicalEventsWithGaps.Count / document.EventManager.Events.Count:P}) events with small timing gaps[/]");
+
+        if (metadataRes is { layoutResIsMissing: true, playResIs360p: true, ycbcrMatrixIsUnmarkedOr609: true })
+        {
+            AnsiConsole.MarkupLine("[green]✓ Metadata is all as expected[/]");
+        }
+        else
+        {
+            List<string> metadataIssues = [];
+            if (!metadataRes.layoutResIsMissing)
+            {
+                var layoutX = document.ScriptInfoManager.Get("LayoutResX");
+                var layoutY = document.ScriptInfoManager.Get("LayoutResY");
+                metadataIssues.Add($"LayoutRes is present and set to {layoutX}x{layoutY}");
             }
 
-            switch (typesettingRes.Style)
+            if (!metadataRes.playResIs360p)
             {
-                case SubtitleTypesettingAnalyzerResult.TypesettingStyle.None:
-                    AnsiConsole.Markup("[red]⚠ Sign Style: None[/]");
-                    break;
-                case SubtitleTypesettingAnalyzerResult.TypesettingStyle.Lite:
-                    AnsiConsole.Markup("[yellow]⚠ Sign Style: Lite[/]");
-                    break;
-                case SubtitleTypesettingAnalyzerResult.TypesettingStyle.Full:
-                    AnsiConsole.Markup("[green]✓ Sign Style: Full[/]");
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException();
+                var playX = document.ScriptInfoManager.Get("PlayResX");
+                var playY = document.ScriptInfoManager.Get("PlayResY");
+                metadataIssues.Add($"PlayRes is set to {playX}x{playY}");
             }
 
-            var overlaps = commonAnalysis.GetOverlaps();
+            if (!metadataRes.ycbcrMatrixIsUnmarkedOr609)
+            {
+                var ycbcrMatrix = document.ScriptInfoManager.Get("YCbCr Matrix");
+                metadataIssues.Add($"YCbCr Matrix is set to {ycbcrMatrix}");
+            }
+
             AnsiConsole.MarkupLineInterpolated(
-                $" [gray]{typesettingRes.Signs.Count} signs, {typesettingRes.SignsWithTypesetting.Count} of which had typesetting. {(overlaps.Count > 0 ? $"Found {overlaps.Count} overlaps." : string.Empty)}[/]");
+                $"[blue]ⓘ Metadata is different from usual, {metadataIssues.Humanize()}[/]");
+        }
 
-            if (x.PrintSigns)
-            {
-                foreach (var sign in typesettingRes.Signs)
-                {
-                    AnsiConsole.Markup("[gray] - [/]");
-                    if (typesettingRes.SignsWithTypesetting.Contains(sign))
-                    {
-                        AnsiConsole.Write("[T] ");
-                    }
-                    AnsiConsole.MarkupLineInterpolated($"[gray]{sign.AsAss()}[/]");
-                }
-            }
-
+        if (knownFontRes.EventsWithUnknownFonts.Count == 0 && knownFontRes.StylesWithUnknownFonts.Count == 0)
+        {
             AnsiConsole.MarkupLineInterpolated(
-                $"[blue]ⓘ {timingRes.ChronologicalEventsWithGaps.Count}/{document.EventManager.Events.Count} ({(double)timingRes.ChronologicalEventsWithGaps.Count / document.EventManager.Events.Count:P}) events with small timing gaps[/]");
+                $"[green]✓ Fonts are all valid [/][gray]{knownFontRes.AllSeenFontNames.Humanize()}[/]");
+        }
+        else
+        {
+            AnsiConsole.MarkupLineInterpolated(
+                $"[yellow]⚠ Non CR approved fonts used: [/][gray]{knownFontRes.AllUnknownFontNames.Humanize()}[/][yellow]. Full font list: [/][gray]{knownFontRes.AllSeenFontNames.Humanize()}[/]");
+        }
 
-            if (metadataRes is { layoutResIsMissing: true, playResIs360p: true, ycbcrMatrixIsUnmarkedOr609: true })
+        AnsiConsole.MarkupLineInterpolated($"[blue]ⓘ Found {commentsRes.EventsWithComments.Count} Comments[/]");
+        if (options.PrintComments)
+        {
+            foreach (var comment in commentsRes.EventsWithComments)
             {
-                AnsiConsole.MarkupLine("[green]✓ Metadata is all as expected[/]");
+                AnsiConsole.MarkupLineInterpolated($"[gray]{comment.Event.AsAss()}[/]");
             }
-            else
-            {
-                List<string> metadataIssues = [];
-                if (!metadataRes.layoutResIsMissing)
-                {
-                    var layoutX = document.ScriptInfoManager.Get("LayoutResX");
-                    var layoutY = document.ScriptInfoManager.Get("LayoutResY");
-                    metadataIssues.Add($"LayoutRes is present and set to {layoutX}x{layoutY}");
-                }
-
-                if (!metadataRes.playResIs360p)
-                {
-                    var playX = document.ScriptInfoManager.Get("PlayResX");
-                    var playY = document.ScriptInfoManager.Get("PlayResY");
-                    metadataIssues.Add($"PlayRes is set to {playX}x{playY}");
-                }
-
-                if (!metadataRes.ycbcrMatrixIsUnmarkedOr609)
-                {
-                    var ycbcrMatrix = document.ScriptInfoManager.Get("YCbCr Matrix");
-                    metadataIssues.Add($"YCbCr Matrix is set to {ycbcrMatrix}");
-                }
-
-                AnsiConsole.MarkupLineInterpolated(
-                    $"[yellow]⚠ Metadata is different from usual, {metadataIssues.Humanize()}[/]");
-            }
-
-            if (knownFontRes.EventsWithUnknownFonts.Count == 0 && knownFontRes.StylesWithUnknownFonts.Count == 0)
-            {
-                AnsiConsole.MarkupLineInterpolated(
-                    $"[green]✓ Fonts are all valid [/][gray]{knownFontRes.AllSeenFontNames.Humanize()}[/]");
-            }
-            else
-            {
-                AnsiConsole.MarkupLineInterpolated(
-                    $"[yellow]⚠ Non CR approved fonts used: [/][gray]{knownFontRes.AllUnknownFontNames.Humanize()}[/][yellow]. Full font list: [/][gray]{knownFontRes.AllSeenFontNames.Humanize()}[/]");
-            }
-
-            AnsiConsole.MarkupLineInterpolated($"[blue]ⓘ Found {commentsRes.EventsWithComments.Count} Comments[/]");
-        });
+        }
     }
 }

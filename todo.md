@@ -17,3 +17,11 @@
 * check actor fields exist (sign of file not being in-house)
 * [CR] The Villainess Is Adored by the Prince of the Neighbor Kingdom - S01E06 [00p].07.ara.Arabic (Saudi Arabia).ass
   ^ check font detection, TimesNewRoman doesnt seem legit to me. CLI issue?
+  
+# Crunchymatic.Web
+
+* I need to evaluate the database layout for this as a whole really.
+  * In my head, Full/Lite/None needs to be replaced with a different enum of "Signs are typeset", "Signs are partially typeset", "Unknown", "Signs are only positioned", "Signs are \an8'd" or something
+  * Lite/None the only distinction really from a detecting side is checking if theres a reasonable amount of overlaps in the subtitle file or not
+* Pipeline might need a different name
+* should include detections for various externals - e.g. Font1/Font1OutlineShadow (EZConvert), the stock SRT --> ASS styles, Ooona tools, GTS, Aniplex, BD DX, etc

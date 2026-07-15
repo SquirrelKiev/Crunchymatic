@@ -75,6 +75,11 @@ public class DocumentCommonAnalysis(Document document)
             {
                 return SignType.TypesetSign;
             }
+
+            if (overrideBlock.Tags.Any(x => x is OverrideTag.Pos))
+            {
+                return SignType.PositionedSign;
+            }
         }
 
         var stripped = subtitleEvent.GetStrippedText();
@@ -97,6 +102,7 @@ public class DocumentCommonAnalysis(Document document)
     {
         IsntSign,
         Sign,
+        PositionedSign,
         TypesetSign
     }
     
