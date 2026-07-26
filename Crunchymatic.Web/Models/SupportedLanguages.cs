@@ -19,6 +19,7 @@ public static class SupportedLanguages
         { "tha", "Thai" },
         { "may", "Malay" },
         { "vie", "Vietnamese" },
-        { "ind", "Indonesian" }
+        { "ind", "Indonesian" },
+        { "pol", "Polish" },
     };
 }

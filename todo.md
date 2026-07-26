@@ -7,6 +7,7 @@
   * now of course these can be across multiple events etc
   * something to sort later™
 * ignore credits when flagging as typeset
+* [CR] BLACK TORCH - S01E03 [00p].12.pol.Polish.ass doesnt seem to load?
 * extract project garbage
 * Check for malformed ass files, e.g. double \[Script Info\], styles that don't exist,
 * meta analysis on multiple sub files
