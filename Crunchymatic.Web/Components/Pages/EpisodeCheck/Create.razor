@@ -1,10 +1,13 @@
 ﻿@page "/anime/{AnimeId:int}/add-check"
-@using System.ComponentModel.DataAnnotations
 @using Crunchymatic.Web.Models
+@using Crunchymatic.Web.Services
 @using Microsoft.EntityFrameworkCore
 @using NodaTime
 @inject IDbContextFactory<CrunchymaticContext> DbFactory
 @inject NavigationManager Navigation
+@inject SubtitleStorageService SubtitleStorage
+@inject SubtitleUploadReportStore SubtitleUploadReports
+@inject ILogger<Create> Logger
 
 @if (Anime == null)
 {
@@ -24,10 +27,11 @@ else
 <AnimeHeader Anime="Anime"/>
 <h5>Creating a new episode check entry for <b>@Anime.EnglishTitle</b>.</h5>
 
-<EditForm Model="Model" OnValidSubmit="OnValidEpisodeCheckCreationFormSubmit" FormName="CreateEpisodeCheck">
+<EditForm Model="Model" OnValidSubmit="OnValidEpisodeCheckCreationFormSubmit" FormName="CreateEpisodeCheck" enctype="multipart/form-data">
     <DataAnnotationsValidator/>
     <ValidationSummary/>
     <EpisodeCheckForm Model="Model"/>
+    <SubtitleUploadForm SubtitleFilesName="@nameof(SubtitleFiles)"/>
     <button type="submit">Create</button>
 </EditForm>
 
@@ -37,6 +41,9 @@ else
 
     private Anime? Anime { get; set; }
 
+    // this doesn't work if put into Model from what I can tell
+    [SupplyParameterFromForm] public IFormFileCollection SubtitleFiles { get; set; } = null!;
+    
     [SupplyParameterFromForm] private EpisodeCheckForm.EpisodeCheckDTO Model { get; set; } = null!;
 
     protected override async Task OnInitializedAsync()
@@ -70,14 +77,29 @@ else
             EpisodeReleased = Instant.FromDateTimeOffset(Model.EpisodeReleased),
             Episode = Model.Episode,
             AudioLanguage = Model.AudioLanguage,
-            TimeSubtitlesGrabbed = Instant.FromDateTimeOffset(Model.TimeSubtitlesGrabbed),
-            SubtitleArchivePath = Model.SubtitleArchivePath
+            TimeSubtitlesGrabbed = Instant.FromDateTimeOffset(Model.TimeSubtitlesGrabbed)
         };
 
         context.EpisodeChecks.Add(episodeCheck);
 
+        IReadOnlyList<SubtitleUploadResult> results = SubtitleFiles is { Count: > 0 }
+            ? await SubtitleStorage.StoreFilesAsync(SubtitleFiles, episodeCheck)
+            : [];
+
         await context.SaveChangesAsync();
+
+        foreach (var result in results)
+        {
+            Logger.LogInformation("file {file} {status} as {lang}", result.FileName, result.Status, result.LanguageCode);
+        }
+
+        var editUrl = $"/check/{episodeCheck.Id}/edit";
         
-        Navigation.NavigateTo($"/anime/{AnimeId}");
+        if (results.Any(x => !x.Succeeded))
+        {
+            editUrl = $"{editUrl}?upload={SubtitleUploadReports.Stash(results)}";
+        }
+
+        Navigation.NavigateTo(editUrl);
     }
 }

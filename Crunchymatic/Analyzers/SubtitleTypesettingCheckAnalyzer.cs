@@ -57,6 +57,8 @@ public record SubtitleTypesettingAnalyzerResult(
 {
     public enum TypesettingStyle
     {
+        Unchecked,
+        
         /// <summary>
         /// No event overlaps, no style overrides or \pos.
         /// </summary>

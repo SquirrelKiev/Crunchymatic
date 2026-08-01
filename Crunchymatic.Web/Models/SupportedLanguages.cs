@@ -2,24 +2,25 @@
 
 public static class SupportedLanguages
 {
+    // see https://static.crunchyroll.com/config/i18n/v3/timed_text_languages.json
     public static readonly Dictionary<string, string> LanguageCodeToEnglishName = new()
     {
-        { "eng", "English" },
-        { "spa-419", "Spanish/LA" },
-        { "spa-ES", "Spanish" },
-        { "por", "Portuguese" },
-        { "fra", "French" },
-        { "deu", "German" },
-        { "ara", "Arabic" },
-        { "ita", "Italian" },
-        { "rus", "Russian" },
+        { "en-US", "English" },
+        { "es-419", "Spanish/LA" },
+        { "es-ES", "Spanish" },
+        { "pt-BR", "Portuguese" },
+        { "fr-FR", "French" },
+        { "de-DE", "German" },
+        { "ar-SA", "Arabic" },
+        { "it-IT", "Italian" },
+        { "ru-RU", "Russian" },
         
-        { "zho", "Chinese" },
-        { "zh-HK", "Chinese" },
-        { "tha", "Thai" },
-        { "may", "Malay" },
-        { "vie", "Vietnamese" },
-        { "ind", "Indonesian" },
-        { "pol", "Polish" },
+        { "zh-CN", "Chinese (Simplified)" },
+        { "zh-HK", "Chinese (Traditional)" },
+        { "th-TH", "Thai" },
+        { "ms-MY", "Malay" },
+        { "vi-VN", "Vietnamese" },
+        { "id-ID", "Indonesian" },
+        { "pl-PL", "Polish" },
     };
 }

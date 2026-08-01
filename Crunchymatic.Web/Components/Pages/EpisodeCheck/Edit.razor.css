@@ -1,0 +1,20 @@
+/* The per row command buttons in the subtitle table. Keyed off what the group is rather than where it sits, so moving
+   the column around won't quietly break this. */
+
+.row-actions {
+    display: flex;
+    gap: 0.25rem;
+    align-items: center;
+}
+
+.row-actions form {
+    margin-bottom: 0;
+}
+
+.row-actions a[role="button"],
+.row-actions button {
+    width: auto;
+    margin-bottom: 0;
+    padding: 0.25rem 0.5rem;
+    white-space: nowrap;
+}

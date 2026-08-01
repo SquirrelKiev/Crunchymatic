@@ -1,0 +1,13 @@
+﻿<label>
+    Subtitle Files
+    @* <InputFile> has some JS interop shenanigans iirc that we can't use due to SSR only, so we use the stock input file stuff instead. *@
+    <input type="file" name="@SubtitleFilesName" multiple/>
+    <small>Please make sure the files contain some marker for the source language. Files with a format similar to <c>[CR] Some Show - S01E01 [00p].01.xyz.ass</c> or <c>subtitle-123456-en-US-1234567890.ass</c></small>
+</label>
+
+@code {
+    /// <summary>
+    /// The name of the parent form's subtitle files property.
+    /// </summary>
+    [Parameter] public string SubtitleFilesName { get; set; } = "SubtitleFiles";
+}

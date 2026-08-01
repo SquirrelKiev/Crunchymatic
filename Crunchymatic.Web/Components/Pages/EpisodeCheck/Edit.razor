@@ -1,11 +1,14 @@
 ﻿@page "/check/{CheckId:int}/edit"
 @using System.Globalization
 @using Crunchymatic.Web.Models
+@using Crunchymatic.Web.Services
 @using Microsoft.EntityFrameworkCore
 @using NodaTime
 @inject IDbContextFactory<CrunchymaticContext> DbFactory
 @inject ILogger<Edit> Logger
 @inject NavigationManager Navigation
+@inject SubtitleStorageService SubtitleStorage
+@inject SubtitleUploadReportStore SubtitleUploadReports
 
 @if (Check == null)
 {
@@ -16,7 +19,7 @@ else
     <PageTitle>Check for Episode @Check.Episode of @Check.LinkedAnime!.EnglishTitle</PageTitle>
 }
 
-@if (Check == null)
+@if (Check == null || Model == null)
 {
     <p aria-busy="true">Loading check…</p>
     return;
@@ -30,6 +33,63 @@ else
     <EpisodeCheckForm Model="Model"/>
     <button type="submit">Edit</button>
 </EditForm>
+
+<hr/>
+
+<h4>Subtitles</h4>
+
+<SubtitleUploadReport Results="SubtitleUploadResults"/>
+
+<form method="post" enctype="multipart/form-data" @formname="UploadSubtitles" @onsubmit="OnUploadSubtitlesSubmit">
+    <AntiforgeryToken/>
+    <SubtitleUploadForm/>
+    <button type="submit" style="width: auto;">Upload</button>
+</form>
+
+@if (CheckedSubtitles.Count == 0)
+{
+    <p>No subtitles for this episode check yet. Why not upload some?</p>
+}
+else
+{
+    <div class="overflow-auto">
+        <table>
+            <thead>
+            <tr>
+                <th scope="col">Language</th>
+                <th scope="col">File</th>
+                <th scope="col">Size</th>
+                <th scope="col"></th>
+            </tr>
+            </thead>
+            <tbody>
+            @foreach (var subtitle in CheckedSubtitles)
+            {
+                <tr>
+                    <td>@DescribeLanguage(subtitle.LanguageCode)</td>
+                    <td>@subtitle.OriginalFileName</td>
+                    <td>@DescribeSize(subtitle.OriginalLength)</td>
+                    <td>
+                        <div class="row-actions" aria-label="@DescribeLanguage(subtitle.LanguageCode) actions">
+                            <a role="button" class="outline"
+                               href="/check/@CheckId/subtitle/@subtitle.LanguageCode"
+                               download data-tooltip="Download">⭳</a>
+                            <form method="post" @formname="@($"DeleteSubtitle-{subtitle.LanguageCode}")"
+                                  @onsubmit="() => OnDeleteSubtitleSubmit(subtitle.LanguageCode)">
+                                <AntiforgeryToken/>
+                                <button type="submit" class="outline secondary"
+                                        onclick="return confirm('@($"Delete the {DescribeLanguage(subtitle.LanguageCode)} subtitle? This cannot be undone.")');"
+                                        data-tooltip="Delete">✕
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+}
 
 <details>
     <summary>Delete @Check.LinkedAnime!.EnglishTitle Episode @Check.Episode</summary>
@@ -45,10 +105,22 @@ else
     [Parameter] public int CheckId { get; set; }
 
     private EpisodeCheck? Check { get; set; }
+
+    [SupplyParameterFromForm(FormName = "EditEpisodeCheck")]
     private EpisodeCheckForm.EpisodeCheckDTO? Model { get; set; }
 
-    private string? EpisodeCheckName => Check?.LinkedAnime == null ? null : 
-        $"{Check.LinkedAnime.EnglishTitle} Episode {Check.Episode} ({Check.TimeSubtitlesGrabbed.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)})";
+    [SupplyParameterFromForm(FormName = "UploadSubtitles")]
+    private IFormFileCollection? SubtitleFiles { get; set; }
+
+    /// <remarks> Set by <see cref="Create"/> for reporting errors.</remarks>
+    /// <seealso cref="SubtitleUploadReportStore"/>
+    [SupplyParameterFromQuery(Name = "upload")]
+    private Guid? UploadReportKey { get; set; }
+
+    private List<CheckedSubtitle> CheckedSubtitles { get; set; } = [];
+    private IReadOnlyList<SubtitleUploadResult> SubtitleUploadResults { get; set; } = [];
+
+    private string? EpisodeCheckName => Check?.LinkedAnime == null ? null : $"{Check.LinkedAnime.EnglishTitle} Episode {Check.Episode} ({Check.TimeSubtitlesGrabbed.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)})";
 
     protected override async Task OnInitializedAsync()
     {
@@ -64,6 +136,11 @@ else
             return;
         }
 
+        if (UploadReportKey is { } uploadReportKey)
+        {
+            SubtitleUploadResults = SubtitleUploadReports.Take(uploadReportKey);
+        }
+
         Check = check;
         Model ??= new EpisodeCheckForm.EpisodeCheckDTO()
         {
@@ -72,8 +149,17 @@ else
             Episode = Check.Episode,
             AudioLanguage = Check.AudioLanguage,
             TimeSubtitlesGrabbed = Check.TimeSubtitlesGrabbed.ToDateTimeOffset(),
-            SubtitleArchivePath = Check.SubtitleArchivePath
         };
+
+        await LoadSubtitlesAsync(context);
+    }
+
+    private async Task LoadSubtitlesAsync(CrunchymaticContext context)
+    {
+        var checkedSubs = await context.CheckedSubtitles.Where(x => x.EpisodeCheckId == CheckId).ToListAsync();
+
+        var languageOrder = SupportedLanguages.LanguageCodeToEnglishName.Keys.ToList();
+        CheckedSubtitles = [.. checkedSubs.OrderBy(x => languageOrder.IndexOf(x.LanguageCode))];
     }
 
     private async Task OnValidEpisodeCheckEditFormSubmit()
@@ -84,7 +170,9 @@ else
 
         System.Diagnostics.Debug.Assert(Model != null);
 
-        var check = await context.EpisodeChecks.FirstOrDefaultAsync(x => x.Id == CheckId);
+        var check = await context.EpisodeChecks
+            .Include(x => x.LinkedAnime)
+            .FirstOrDefaultAsync(x => x.Id == CheckId);
 
         if (check == null)
         {
@@ -97,7 +185,6 @@ else
         check.Episode = Model.Episode;
         check.AudioLanguage = Model.AudioLanguage;
         check.TimeSubtitlesGrabbed = Instant.FromDateTimeOffset(Model.TimeSubtitlesGrabbed);
-        check.SubtitleArchivePath = Model.SubtitleArchivePath;
 
         Check = check;
 
@@ -121,8 +208,48 @@ else
         context.EpisodeChecks.Remove(check);
 
         await context.SaveChangesAsync();
-        
+
         Navigation.NavigateTo($"/anime/{check.AnimeId}");
     }
+    
+    private async Task OnUploadSubtitlesSubmit()
+    {
+        if (SubtitleFiles is not { Count: > 0 })
+            return;
 
+        await using var context = await DbFactory.CreateDbContextAsync();
+        
+        var check = await context.EpisodeChecks.Include(x => x.CheckedSubtitles).FirstOrDefaultAsync(x => x.Id == CheckId);
+
+        if (check == null)
+        {
+            Navigation.NavigateTo("/anime");
+            return;
+        }
+
+        SubtitleUploadResults = await SubtitleStorage.StoreFilesAsync(SubtitleFiles, check);
+
+        await context.SaveChangesAsync();
+
+        await LoadSubtitlesAsync(context);
+    }
+
+    private async Task OnDeleteSubtitleSubmit(string languageCode)
+    {
+        Logger.LogInformation("Deleting {languageCode} subtitle for check {checkId}", languageCode, CheckId);
+
+        await using var context = await DbFactory.CreateDbContextAsync();
+
+        await context.CheckedSubtitles
+            .Where(x => x.EpisodeCheckId == CheckId && x.LanguageCode == languageCode)
+            .ExecuteDeleteAsync();
+
+        await LoadSubtitlesAsync(context);
+    }
+
+    private static string DescribeLanguage(string languageCode) =>
+        SupportedLanguages.LanguageCodeToEnglishName.TryGetValue(languageCode, out var englishName)
+            ? $"{englishName} ({languageCode})" : languageCode;
+
+    private static string DescribeSize(long bytes) => bytes < 1024 ? $"{bytes} B" : $"{bytes / 1024d:0.#} KiB";
 }

@@ -1,4 +1,5 @@
 ﻿@using System.ComponentModel.DataAnnotations
+@using Crunchymatic.Web.Services
 <fieldset>
     <label>
         Crunchyroll Episode ID
@@ -24,10 +25,6 @@
         Time Subtitles Grabbed
         <InputDate Type="InputDateType.DateTimeLocal" @bind-Value="Model.TimeSubtitlesGrabbed"/>
     </label>
-    <label>
-        Subtitles Archive Path
-        <InputText @bind-Value="Model.SubtitleArchivePath"/>
-    </label>
 </fieldset>
 
 @code {
@@ -45,8 +42,6 @@
         [MinLength(1), MaxLength(32)] public string CrunchyrollEpisodeId { get; set; } = string.Empty;
 
         public DateTimeOffset TimeSubtitlesGrabbed { get; set; } = DateTimeOffset.UtcNow;
-
-        public string? SubtitleArchivePath { get; set; }
     }
 
 }

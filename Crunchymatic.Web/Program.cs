@@ -1,7 +1,9 @@
 using Crunchymatic.Web.Components;
 using Crunchymatic.Web.Models;
+using Crunchymatic.Web.Services;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
+using NodaTime;
 using Serilog;
 using Serilog.Sinks.SystemConsole.Themes;
 
@@ -33,6 +35,16 @@ builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
 // Add services to the container.
 builder.Services.AddRazorComponents();
+builder.Services.AddSingleton<IClock>(SystemClock.Instance);
+builder.Services.AddSingleton<SubtitleStorageService>();
+builder.Services.AddMemoryCache();
+builder.Services.AddSingleton<SubtitleUploadReportStore>();
+
+builder.WebHost.ConfigureKestrel(options =>
+    options.Limits.MaxRequestBodySize = SubtitleStorageService.MaxRequestSize);
+
+builder.Services.Configure<FormOptions>(options =>
+    options.MultipartBodyLengthLimit = SubtitleStorageService.MaxRequestSize);
 
 var app = builder.Build();
 
@@ -76,5 +88,26 @@ app.UseAntiforgery();
 
 app.MapStaticAssets();
 app.MapRazorComponents<App>();
+app.MapGet("/check/{checkId:int}/subtitle/{languageCode}", async (
+    int checkId,
+    string languageCode,
+    IDbContextFactory<CrunchymaticContext> dbFactory,
+    CancellationToken cancellationToken) =>
+{
+    await using var context = await dbFactory.CreateDbContextAsync(cancellationToken);
+
+    var file = await context.CheckedSubtitles
+        .Include(x => x.Content)
+        .FirstOrDefaultAsync(x => x.EpisodeCheckId == checkId && x.LanguageCode == languageCode,
+            cancellationToken);
+
+    if (file?.Content == null)
+        return Results.NotFound();
+
+    var content = await SubtitleStorageService.DecompressAsync(file.Content.CompressedContent, file.OriginalLength,
+        cancellationToken);
+
+    return Results.File(content, "application/octet-stream", file.OriginalFileName);
+});
 
 app.Run();

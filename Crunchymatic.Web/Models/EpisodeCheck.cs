@@ -18,8 +18,6 @@ public class EpisodeCheck
 
     public NodaTime.Instant TimeSubtitlesGrabbed { get; set; }
 
-    [MaxLength(256)] public string? SubtitleArchivePath { get; set; }
-
     public ICollection<CheckedSubtitle> CheckedSubtitles { get; set; } = [];
 
     [ForeignKey(nameof(LinkedAnime))] public int AnimeId { get; set; }

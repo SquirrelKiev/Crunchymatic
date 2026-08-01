@@ -1,0 +1,44 @@
+@using Crunchymatic.Web.Services
+
+@if (Results.Count == 0)
+{
+    return;
+}
+
+<article>
+    @{
+        var stored = Results.Where(x => x.Succeeded).ToList();
+        var failed = Results.Where(x => !x.Succeeded).ToList();
+    }
+
+    @if (BatchTooLarge)
+    {
+        @* Every file shares the same reason here, so listing them all is dumb. *@
+        <p role="alert">None of the @Results.Count files were uploaded. @Results[0].Describe().</p>
+    }
+    else if (failed.Count > 0)
+    {
+        <div role="alert">
+            <p>@failed.Count of @Results.Count file(s) weren't uploaded:</p>
+            <ul>
+                @foreach (var result in failed)
+                {
+                    <li @key="result.Index"><code>@result.DisplayFileName</code>: @result.Describe()</li>
+                }
+            </ul>
+        </div>
+    }
+
+@if (stored.Count > 0)
+{
+    <span>Uploaded @stored.Count file(s): @string.Join(", ", stored.Select(x => x.Describe())).</span>
+}
+</article>
+
+@code {
+
+    [Parameter] public IReadOnlyList<SubtitleUploadResult> Results { get; set; } = [];
+
+    private bool BatchTooLarge => Results.Count > 0 && Results.All(x => x.Status == SubtitleUploadStatus.BatchTooLarge);
+
+}
