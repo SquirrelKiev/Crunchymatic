@@ -427,4 +427,8 @@ FodyWeavers.xsd
 *.msm
 *.msp
 
+# Crunchymatic
 /Crunchymatic.Web/Properties/launchSettings.json
+/Crunchymatic.Web/wwwroot/subtool
+/Crunchymatic.Web/wwwroot/alpine.min.js
+/Crunchymatic.Web/wwwroot/pico.orange.min.css

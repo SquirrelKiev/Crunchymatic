@@ -1,6 +1,7 @@
 using Crunchymatic.Web.Components;
 using Crunchymatic.Web.Models;
 using Crunchymatic.Web.Services;
+using Vite.AspNetCore;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
@@ -33,6 +34,8 @@ builder.Services.AddDbContextFactory<CrunchymaticContext>(options =>
 
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
+builder.Services.AddViteServices();
+
 // Add services to the container.
 builder.Services.AddRazorComponents();
 builder.Services.AddSingleton<IClock>(SystemClock.Instance);
@@ -57,6 +60,9 @@ if (app.Environment.IsDevelopment())
 {
     app.UseDeveloperExceptionPage();
     app.UseMigrationsEndPoint();
+    
+    app.UseWebSockets();
+    app.UseViteDevelopmentServer(true);
 
     var dbMode = app.Configuration["NukeDb"];
 

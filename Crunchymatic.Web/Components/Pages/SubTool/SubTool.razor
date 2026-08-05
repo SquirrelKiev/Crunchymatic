@@ -1,0 +1,22 @@
+﻿@page "/check/{CheckId:int}/subtool"
+@inject IWebHostEnvironment Env
+@layout EmptyLayout
+
+<HeadContent>
+    @if (Env.IsDevelopment())
+    {
+        <script type="module" src="/subtool/@@vite/client"></script>
+        <script type="module" src="/subtool/src/main.ts"></script>
+    }
+    else
+    {
+        <link rel="stylesheet" href="@Assets["subtool/subtool.css"]"/>
+        <script type="module" src="@Assets["subtool/subtool.js"]"></script>
+    }
+</HeadContent>
+
+<div id="subtool" data-check-id="@CheckId"></div>
+
+@code {
+    [Parameter] public int CheckId { get; set; }
+}
