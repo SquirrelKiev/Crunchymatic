@@ -60,8 +60,7 @@ public class CrunchymaticContext(DbContextOptions<CrunchymaticContext> contextOp
                 "CK_CheckedSubtitles_FileMetadataIsConsistent",
                 """("UploadedAt" IS NULL) = ("OriginalFileName" IS NULL)"""));
 
-            // file contents live in their own table so they're never pulled in unless I meant to. deliberately NOT
-            // table splitting - sharing a table would block ExecuteDelete/ExecuteUpdate on CheckedSubtitles.
+            // file contents live in their own table, so they're never pulled in unless I meant to
             builder.HasOne(x => x.Content)
                 .WithOne(x => x.CheckedSubtitle)
                 .HasForeignKey<SubtitleFileContent>(x => new { x.EpisodeCheckId, x.LanguageCode })

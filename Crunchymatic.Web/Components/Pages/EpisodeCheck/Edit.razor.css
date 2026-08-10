@@ -1,6 +1,3 @@
-/* The per row command buttons in the subtitle table. Keyed off what the group is rather than where it sits, so moving
-   the column around won't quietly break this. */
-
 .row-actions {
     display: flex;
     gap: 0.25rem;
