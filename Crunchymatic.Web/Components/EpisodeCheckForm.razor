@@ -1,5 +1,4 @@
 ﻿@using System.ComponentModel.DataAnnotations
-@using Crunchymatic.Web.Services
 <fieldset>
     <label>
         Crunchyroll Episode ID
@@ -13,7 +12,7 @@
     </label>
     <label>
         Episode Released
-        <InputDate Type="InputDateType.DateTimeLocal" @bind-Value="Model.EpisodeReleased"/>
+        <InputDate Type="InputDateType.DateTimeLocal" @bind-Value="Model.EpisodeReleased" step="1"/>
     </label>
     <label>
         Audio Language
@@ -23,7 +22,7 @@
 <fieldset>
     <label>
         Time Subtitles Grabbed
-        <InputDate Type="InputDateType.DateTimeLocal" @bind-Value="Model.TimeSubtitlesGrabbed"/>
+        <InputDate Type="InputDateType.DateTimeLocal" @bind-Value="Model.TimeSubtitlesGrabbed" step="1"/>
     </label>
 </fieldset>
 
@@ -34,7 +33,7 @@
     
     public record EpisodeCheckDTO
     {
-        [Required] public DateTimeOffset EpisodeReleased { get; set; } = DateTimeOffset.UtcNow;
+        [Required] public DateTimeOffset EpisodeReleased { get; set; } = RoundToMinute(DateTimeOffset.UtcNow);
 
         [MinLength(1)] public string Episode { get; set; } = string.Empty;
 
@@ -42,6 +41,15 @@
         [MinLength(1), MaxLength(32)] public string CrunchyrollEpisodeId { get; set; } = string.Empty;
 
         public DateTimeOffset TimeSubtitlesGrabbed { get; set; } = DateTimeOffset.UtcNow;
+
+        private static DateTimeOffset RoundToMinute(DateTimeOffset value)
+        {
+            var ticksOverMinute = value.Ticks % TimeSpan.TicksPerMinute;
+            var rounded = ticksOverMinute >= TimeSpan.TicksPerMinute / 2
+                ? value.AddTicks(TimeSpan.TicksPerMinute - ticksOverMinute)
+                : value.AddTicks(-ticksOverMinute);
+            return rounded;
+        }
     }
 
 }
