@@ -16,6 +16,7 @@
       </PackageReference>
       <PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="10.0.2" />
       <PackageReference Include="NodaTime" Version="3.3.0" />
+      <PackageReference Include="NodaTime.Serialization.SystemTextJson" Version="1.4.0" />
       <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.0" />
       <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL.NodaTime" Version="10.0.0" />
       <PackageReference Include="Serilog" Version="4.3.1" />
@@ -44,10 +45,20 @@
         <Touch Files="$(IntermediateOutputPath)pnpm-install.stamp" AlwaysCreate="true" />
     </Target>
     
-    <Target Name="PnpmBuild" DependsOnTargets="PnpmInstall" BeforeTargets="ResolveProjectStaticWebAssets">
+    <Target Name="PnpmBuild" DependsOnTargets="PnpmInstall" BeforeTargets="ResolveProjectStaticWebAssets">        
         <Copy SourceFiles="SubTool\node_modules\@picocss\pico\css\pico.orange.min.css" DestinationFolder="wwwroot" SkipUnchangedFiles="true" />
         <Copy SourceFiles="SubTool\node_modules\alpinejs\dist\cdn.min.js" DestinationFiles="wwwroot\alpine.min.js" SkipUnchangedFiles="true" />
         <Exec Command="pnpm build" WorkingDirectory="SubTool" />
+
+        <!-- MSBuild seems to expect old files to still exist if this isnt here -->
+        <ItemGroup>
+            <MissingContent Include="@(Content)" Condition="!Exists('%(Content.FullPath)')" />
+        </ItemGroup>
+
+        <ItemGroup>
+            <Content Remove="@(MissingContent)" />
+        </ItemGroup>
+        
         <ItemGroup>
             <Content Include="wwwroot/**/*.*" />
         </ItemGroup>

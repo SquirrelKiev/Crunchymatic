@@ -1,10 +1,16 @@
+using System.IO.Compression;
+using System.Text;
+using System.Text.Encodings.Web;
+using System.Text.Unicode;
 using Crunchymatic.Web.Components;
 using Crunchymatic.Web.Models;
 using Crunchymatic.Web.Services;
 using Vite.AspNetCore;
 using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
+using NodaTime.Serialization.SystemTextJson;
 using Serilog;
 using Serilog.Sinks.SystemConsole.Themes;
 
@@ -37,6 +43,15 @@ builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 builder.Services.AddViteServices();
 
 // Add services to the container.
+// TODO: This shouldn't be the default really. This is only here for /api/check/{checkId:int}
+builder.Services.AddResponseCompression(x => x.EnableForHttps = true);
+builder.Services.Configure<BrotliCompressionProviderOptions>(x => x.Level = CompressionLevel.Optimal);
+builder.Services.ConfigureHttpJsonOptions(x =>
+{
+    x.SerializerOptions.ConfigureForNodaTime(new NodaJsonSettings(DateTimeZoneProviders.Tzdb));
+    x.SerializerOptions.Encoder = JavaScriptEncoder.Create(UnicodeRanges.All);
+});
+
 builder.Services.AddRazorComponents();
 builder.Services.AddSingleton<IClock>(SystemClock.Instance);
 builder.Services.AddSingleton<SubtitleStorageService>();
@@ -92,8 +107,10 @@ app.UseHostFiltering();
 
 app.UseAntiforgery();
 
+app.UseResponseCompression();
 app.MapStaticAssets();
 app.MapRazorComponents<App>();
+
 app.MapGet("/check/{checkId:int}/subtitle/{languageCode}", async (
     int checkId,
     string languageCode,
@@ -104,6 +121,7 @@ app.MapGet("/check/{checkId:int}/subtitle/{languageCode}", async (
 
     var file = await context.CheckedSubtitles
         .Include(x => x.Content)
+        .AsNoTracking()
         .FirstOrDefaultAsync(x => x.EpisodeCheckId == checkId && x.LanguageCode == languageCode,
             cancellationToken);
 
@@ -116,4 +134,50 @@ app.MapGet("/check/{checkId:int}/subtitle/{languageCode}", async (
     return Results.File(content, "application/octet-stream", file.OriginalFileName);
 });
 
+app.MapGet("/api/check/{checkId:int}", async (
+    int checkId,
+    IDbContextFactory<CrunchymaticContext> dbFactory,
+    CancellationToken cancellationToken) =>
+{
+    await using var context = await dbFactory.CreateDbContextAsync(cancellationToken);
+    
+    var check = await context.EpisodeChecks
+        .Include(x => x.LinkedAnime)
+        .Include(x => x.CheckedSubtitles.Where(s => s.UploadedAt != null)) // TODO: allow entries with no subs to be marked in some way (e.g. hardsub only)
+        .ThenInclude(s => s.Content)
+        .AsNoTracking()
+        .FirstOrDefaultAsync(x => x.Id == checkId, cancellationToken);
+    
+    if(check is null)
+        return Results.NotFound(); // this would return HTML which isn't ideal for an endpoint that outputs JSON usually
+    
+    var subtitles = new List<SubtitleDto>();
+    foreach (var checkedSubtitle in check.CheckedSubtitles.OrderBy(x => x.LanguageCode))
+    {
+        if (checkedSubtitle.Content is null) continue;
+        
+        var bytes = await SubtitleStorageService.DecompressAsync(checkedSubtitle.Content.CompressedContent, checkedSubtitle.OriginalLength, cancellationToken);
+        
+        subtitles.Add(new SubtitleDto(checkedSubtitle.LanguageCode,
+            checkedSubtitle.OriginalFileName ?? $"{checkedSubtitle.LanguageCode}.ass",
+            checkedSubtitle.SubtitlePipeline.ToString(), // TODO: This all needs hooking up to the actual analyzer really
+            checkedSubtitle.TypesettingStyle.ToString(),
+            Encoding.UTF8.GetString(bytes).TrimStart('\uFEFF')));
+    }
+    
+    return Results.Ok(new CheckPayloadDto(
+        check.LinkedAnime?.EnglishTitle ?? "(unknown)",
+        check.Episode,
+        check.TimeSubtitlesGrabbed,
+        subtitles));
+});
+
 app.Run();
+
+record SubtitleDto(string LanguageCode, string FileName, string AutoPipeline, string AutoTypesetting, string Content);
+
+record CheckPayloadDto(
+    string AnimeTitle,
+    string Episode,
+    NodaTime.Instant SubtitlesGrabbed,
+    IReadOnlyList<SubtitleDto> Subtitles);
