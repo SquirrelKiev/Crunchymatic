@@ -56,6 +56,7 @@ public static class Entrypoint
             case SubtitleTypesettingAnalyzerResult.TypesettingStyle.NoOverlaps:
                 AnsiConsole.MarkupInterpolated($"[red]⚠ Sign Style: {typesettingRes.Style}[/]");
                 break;
+            case SubtitleTypesettingAnalyzerResult.TypesettingStyle.LitePlus:
             case SubtitleTypesettingAnalyzerResult.TypesettingStyle.Lite:
                 AnsiConsole.MarkupInterpolated($"[yellow]⚠ Sign Style: {typesettingRes.Style}[/]");
                 break;

@@ -12,9 +12,10 @@ public class DocumentCommonAnalysis(Document document)
     private List<Event>? chronologicalEvents;
     private readonly Dictionary<string, bool> styleIsTypesetting = [];
     private HashSet<LinkedEvents>? overlaps;
-    
+
     // TODO: replace this with a heuristic solution - check all events for the most common style, and assume thats the dialog font? if the style doesnt exist, use the default - whatever that is decided to be
-    private static readonly string[] DialogueFonts = ["trebuchet", "arial", "noto", "adobe arabic", "tahoma", "verdana"];
+    private static readonly string[] DialogueFonts =
+        ["trebuchet", "arial", "noto", "adobe arabic", "tahoma", "verdana"];
 
     /// <summary>
     /// Returns the document's events, sorted by their start time.
@@ -67,6 +68,9 @@ public class DocumentCommonAnalysis(Document document)
             styleIsTypesetting[subtitleEvent.Style] = false;
         }
 
+        var hasPos = false;
+        var hasColor = false;
+
         foreach (var block in subtitleEvent.ParseBlocks())
         {
             if (block is not OverrideBlock overrideBlock) continue;
@@ -76,21 +80,25 @@ public class DocumentCommonAnalysis(Document document)
                 return SignType.TypesetSign;
             }
 
-            if (overrideBlock.Tags.Any(x => x is OverrideTag.Pos))
-            {
-                return SignType.PositionedSign;
-            }
+            hasPos |= overrideBlock.Tags.Any(x => x is OverrideTag.Pos);
+            hasColor |= overrideBlock.Tags.Any(x =>
+                x is OverrideTag.C or OverrideTag.C1 or OverrideTag.C2 or OverrideTag.C3 or OverrideTag.C4);
         }
 
+        if (hasPos && hasColor) return SignType.TypesetSign;
+        if (hasPos) return SignType.PositionedSign;
+        if (hasColor) return SignType.ColoredSign;
+
         var stripped = subtitleEvent.GetStrippedText();
-        
+
         if (subtitleEvent.Style.Contains("sign", StringComparison.InvariantCultureIgnoreCase) ||
             subtitleEvent.Style.Contains("TypePlaceholder", StringComparison.InvariantCultureIgnoreCase) || // ger
             subtitleEvent.Style.StartsWith("Cart_", StringComparison.InvariantCultureIgnoreCase) || // spa
             subtitleEvent.Actor.Equals("sign", StringComparison.InvariantCultureIgnoreCase) ||
             subtitleEvent.Actor.Equals("signs", StringComparison.InvariantCultureIgnoreCase) ||
             subtitleEvent.Actor.Contains("Надпись", StringComparison.InvariantCultureIgnoreCase) || // rus
-            (!string.IsNullOrWhiteSpace(stripped) && stripped.EnumerateRunes().All(static x => !Rune.IsLower(x) && Rune.GetUnicodeCategory(x) != UnicodeCategory.OtherLetter)))
+            (!string.IsNullOrWhiteSpace(stripped) && stripped.EnumerateRunes().All(static x =>
+                !Rune.IsLower(x) && Rune.GetUnicodeCategory(x) != UnicodeCategory.OtherLetter)))
         {
             return SignType.Sign;
         }
@@ -103,14 +111,14 @@ public class DocumentCommonAnalysis(Document document)
         IsntSign,
         Sign,
         PositionedSign,
-        TypesetSign
+        TypesetSign,
+        ColoredSign
     }
-    
+
     private static bool IsTagTypesetting(OverrideTag tag)
     {
         return tag is OverrideTag.A1 or OverrideTag.A2 or OverrideTag.A3 or OverrideTag.A4 or OverrideTag.Alpha or
-            OverrideTag.Be or OverrideTag.Blur or OverrideTag.Bord or
-            OverrideTag.C or OverrideTag.C1 or OverrideTag.C2 or OverrideTag.C3 or OverrideTag.C4 or OverrideTag.Clip or
+            OverrideTag.Be or OverrideTag.Blur or OverrideTag.Bord or OverrideTag.Clip or
             OverrideTag.FaX or OverrideTag.FaY or OverrideTag.Fn or OverrideTag.Fr or OverrideTag.FrX or OverrideTag.FrY
             or OverrideTag.FrZ or
             OverrideTag.FscX or OverrideTag.FscY or OverrideTag.IClip or OverrideTag.K or OverrideTag.Move or
